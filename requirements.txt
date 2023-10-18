@@ -1,0 +1,13 @@
+pymilvus
+langchain
+pyyaml
+pillow
+transformers
+datasets
+tqdm
+gradio==3.47.1
+faiss-cpu
+scikit-learn
+pytorch_lightning
+OmegaConf
+hydra-core

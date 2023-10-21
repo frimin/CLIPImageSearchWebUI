@@ -12,7 +12,7 @@ from module.data import get_vector_db_mgr, get_clip_model
 from tqdm import tqdm
 import os
 import json
-import shutil
+from module.webui.components.search_target import on_load_search_target, get_search_target
 
 _reload_db_index = 0
 
@@ -28,7 +28,6 @@ def on_bind(search_state: SearchVectorPageState, compolents: list[gr.components.
     def on_load_vecdb(vecdb_name: str,
                       search_target,
                       page_state: dict(), 
-                      select_search_history: str,
                       progress = gr.Progress(track_tqdm=True)):
         global _reload_db_index
 
@@ -38,7 +37,7 @@ def on_bind(search_state: SearchVectorPageState, compolents: list[gr.components.
         vecdb_name = vecdb_name.strip()
 
         if not vecdb_name:
-            vecdb_name = f"从查询结果加载{_reload_db_index}" 
+            vecdb_name = f"从查询结果加载_{_reload_db_index}" 
             _reload_db_index+=1
         
         if not page_state:
@@ -72,22 +71,17 @@ def on_bind(search_state: SearchVectorPageState, compolents: list[gr.components.
             "", 
             # msg_text
             "", 
-            # search_target
-            search_target,
-            # select_search_target
-            gr.Dropdown.update(choices=search_target["db"])
         ]
+
+    search_target_inputs_outputs = get_search_target()
 
     vecdb_name, load_btn = compolents
 
     load_btn.click(fn=on_load_vecdb, inputs=[
-            vecdb_name,
-            search_state.search_target,
-            search_state.page_state,
-            search_state.select_search_history
-        ], outputs=[
-            vecdb_name,
-            search_state.msg_text,
-            search_state.search_target,
-            search_state.select_search_target,
-        ])
+        vecdb_name,
+        search_state.search_target,
+        search_state.page_state,
+    ], outputs=[
+        vecdb_name,
+        search_state.msg_text,
+    ]).then(on_load_search_target, search_target_inputs_outputs, search_target_inputs_outputs)

@@ -183,8 +183,8 @@ def create_embedding_page(top_elems: TopElements):
         copy_vec_db_dir_from_configs = gr.Button("从设置中复制所有向量库路径")
     build_meta_indir = gr.TextArea(label="生成此目录列表下所有图片向量文件 (需要较高的 CPU 和 GPU 资源)")
     with gr.Row():
-        build_meta_batch_size = gr.Number(label="batch_size", info="批大小", value=4)
-        build_meta_num_workers = gr.Number(label="num_workers", info="工作进程数", value=8)
+        build_meta_batch_size = gr.Number(label="批大小", info="batch_size", value=4)
+        build_meta_num_workers = gr.Number(label="工作进程数", info="num_workers", value=8)
         start_create_meta_btn = gr.Button(value="生成向量文件")
 
     gr.Markdown("(第二步) 生成向量库磁盘文件，如果不生成则会在每次加载时遍历所有向量文件在内存中构建。")

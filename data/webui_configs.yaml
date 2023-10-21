@@ -1,5 +1,7 @@
 clip_model_id: "openai/clip-vit-large-patch14"
 clip_device: cpu
+clip:
+  offline_load: false
 librarys:
 - <example>data\example_library
 security:
@@ -11,7 +13,7 @@ cache:
     # 图片文件超过此大小时创建缓存
     greater_than_size: 2097152
 search:
-  default_top_k: 10000
+  default_top_k: 1000
   # 搜索最大结果数量
   max_top_k: 1000000
   # 默认最大分页大小

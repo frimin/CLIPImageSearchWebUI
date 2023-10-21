@@ -3,6 +3,7 @@ import os
 import gradio as gr
 import module.utils.constants_util as constants_util
 import module.utils.path_util as path_util
+from module.data.clip_model_list import get_clip_model_list
 import json
 import shutil
 from tqdm import tqdm
@@ -87,6 +88,8 @@ def save_query_image_to_dir(
 ):
     if page_state is None:
         raise constants_util.NO_QUERY_RESULT_ERROR
+
+    clip_model_list = get_clip_model_list()
 
     search_id = page_state["search_id"]
 
@@ -194,9 +197,17 @@ def save_query_image_to_dir(
                                 # 拷贝同名的其它扩展名的文件
                                 for additional_ext in copy_same_name_ext:
                                     additional_filename_with_ext = filename + additional_ext
-                                    additional_save_to_filename = os.path.join(search_outdir, f"{out_base_name}{additional_ext}")
                                     if os.path.exists(additional_filename_with_ext):
+                                        additional_save_to_filename = os.path.join(search_outdir, f"{out_base_name}{additional_ext}")
                                         shutil.copyfile(additional_filename_with_ext, additional_save_to_filename)
+                                    
+                                # 拷贝 embed 文件
+                                for short_name in clip_model_list.get_short_names():
+                                    embed_ext = f".{short_name}.embed.pt"
+                                    embed_filename_with_ext = filename + embed_ext
+                                    if os.path.exists(additional_filename_with_ext):
+                                        additional_save_to_filename = os.path.join(search_outdir, f"{out_base_name}{embed_ext}")
+                                        shutil.copyfile(embed_filename_with_ext, additional_save_to_filename)
 
                                 break
 

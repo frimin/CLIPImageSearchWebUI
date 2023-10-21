@@ -1,8 +1,4 @@
 import os
-
-#os.environ["SSLKEYLOGFILE"] = "./nss_ssl_sfagent.log"
-#os.environ["HF_HOME"] = "./.cache/huggingface"
-
 import argparse
 from module.webui import start_app
 

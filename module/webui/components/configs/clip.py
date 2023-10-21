@@ -39,12 +39,16 @@ def create_clip_configs(top_elems: TopElements, builder: ConfigUIBuilder):
 
     builder.add_elems(clip_model_id, "clip_model_id", get_clip_model_id)
 
-    with gr.Accordion(label="辅助功能"):
-        info = gr.Code(label="模型信息", visible=False)
+    with gr.Row():
+        builder.add_elems(gr.Checkbox(label="强制离线直接从本地缓存加载CLIP模型", info="已经从 huggingface 下载过对应模型则不用每次在线检查", interactive=True), "clip.offline_load")
 
+    with gr.Accordion(label="辅助功能"):
         with gr.Row():
             info_clip_model = gr.Button("查看已加载的模型信息")
-            info_clip_model.click(on_show_info_clip_model, [], [info]).then(lambda : gr.Accordion.update(visible=True), [], [info])
-
             unload_clip_model = gr.Button("卸载正在使用中的模型")
-            unload_clip_model.click(on_unload_clip_model).then(lambda : "已卸载", outputs=[top_elems.msg_text])
+        
+        info = gr.Code(label="模型信息", visible=False)
+
+        info_clip_model.click(on_show_info_clip_model, [], [info]).then(lambda : gr.Accordion.update(visible=True), [], [info])
+        unload_clip_model.click(on_unload_clip_model).then(lambda : "已卸载", outputs=[top_elems.msg_text])
+

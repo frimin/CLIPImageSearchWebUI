@@ -1,7 +1,7 @@
 import os
 import shutil
 
-PREVIEW_CACHE_DIR = os.path.abspath("./app_cache")
+PREVIEW_CACHE_DIR = os.path.abspath("./userdata/cache")
 
 if not os.path.exists(PREVIEW_CACHE_DIR):
     os.mkdir(PREVIEW_CACHE_DIR)

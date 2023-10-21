@@ -27,9 +27,26 @@ def on_load_vector_db(progress=gr.Progress(track_tqdm=True)):
     vector_db.load_vector_db_from_lines(cfg.librarys)
     return "已加载"
 
+def on_load_top_n_vector_db(progress=gr.Progress(track_tqdm=True)):
+    cfg = get_webui_configs().get_cfg()
+    vector_db = get_vector_db_mgr()
+
+    if cfg.vector_db.load_start_count < 0:
+        return "未加载"
+
+    load_librarys = list(cfg.librarys)
+
+    if cfg.vector_db.load_start_count > 0:
+        load_librarys = load_librarys[:cfg.vector_db.load_start_count]
+
+    vector_db.load_vector_db_from_lines(load_librarys)
+
+    return "已加载"
+
 def on_unload_vector_db():
     vector_db = get_vector_db_mgr()
     vector_db.unload_all()
+    return "已卸载"
 
 def create_vector_db_configs(top_elems: TopElements, builder: ConfigUIBuilder):
     #vector_db_engine = gr.Dropdown(label="向量数据库引擎", choices=["FAISS (本机)"], value=0, type="index", interactive=False)
@@ -47,20 +64,28 @@ def create_vector_db_configs(top_elems: TopElements, builder: ConfigUIBuilder):
     builder.add_elems(librarys, "librarys", get_librarys, set_librarys)
 
     with gr.Accordion(label="辅助功能"):
-        info = gr.Code(label="向量库信息", visible=False)
 
         with gr.Row():
-            info_clip_model = gr.Button("查看已加载的向量库信息")
-            info_clip_model.click(on_show_info_vector_db, [], [info]).then(lambda : gr.Accordion.update(visible=True), [], [info])
+            info_vector_db = gr.Button("查看已加载的向量库信息")
 
-            search_target_inputs_outputs = get_search_target()
+            load_all_vector_db = gr.Button("加载全部向量库")
+            load_top_n_vector_db = gr.Button("加载 TopN 向量库")
+            unload_clip_model = gr.Button("卸载正在使用中的向量库")
+        
+        info = gr.Code(label="向量库信息", visible=False)
 
-            load_clip_model = gr.Button("加载向量数据库")
-            load_clip_model.click(
-                on_load_vector_db, [], [top_elems.msg_text]
-            ).then(on_load_search_target, search_target_inputs_outputs, search_target_inputs_outputs)
+        search_target_inputs_outputs = get_search_target()
 
-            unload_clip_model = gr.Button("卸载正在使用中的向量数据库")
-            unload_clip_model.click(
-                on_unload_vector_db
-            ).then(lambda : "已卸载", outputs=[top_elems.msg_text])
+        info_vector_db.click(on_show_info_vector_db, [], [info]).then(lambda : gr.Accordion.update(visible=True), [], [info])
+
+        load_all_vector_db.click(
+            on_load_vector_db, [], [top_elems.msg_text]
+        ).then(on_load_search_target, search_target_inputs_outputs, search_target_inputs_outputs)
+
+        load_top_n_vector_db.click(
+            on_load_top_n_vector_db, [], [top_elems.msg_text]
+        ).then(on_load_search_target, search_target_inputs_outputs, search_target_inputs_outputs)
+
+        unload_clip_model.click(
+            on_unload_vector_db, [], [top_elems.msg_text]
+        ).then(on_load_search_target, search_target_inputs_outputs, search_target_inputs_outputs)

@@ -1,7 +1,7 @@
 import gradio as gr
 from typing import Callable
 from omegaconf import ListConfig
-from module.foundation.webui import ConfigUIBuilder, VALUE_TYPE_INT
+from module.foundation.webui import TopElements, TopTab, ConfigUIBuilder, VALUE_TYPE_INT
 from module.data import (
     get_webui_configs, 
 )
@@ -101,7 +101,9 @@ def create_on_save(builder: ConfigUIBuilder):
 
     return inputs, on_save_all
 
-def create_webui_configs(top_elems):
+def create_webui_configs(top_elems: TopElements):
+    context = top_elems.top_tab_context
+
     builder = ConfigUIBuilder()
 
     """配置页面"""
@@ -110,17 +112,20 @@ def create_webui_configs(top_elems):
             cancel_btn = gr.Button(value="恢复修改")
             save_btn = gr.Button(value="保存配置", variant="primary")
 
-        with gr.Tab(label="CLIP"):
-            create_clip_configs(top_elems, builder) 
+        gr.Markdown("[GITHUB 在线文档](https://github.com/frimin/CLIPImageSearchWebUI#%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E)")
 
-        with gr.Tab(label="向量库"):
-            create_vector_db_configs(top_elems, builder)
+        with TopTab.Tabs(context):
+            with TopTab.TabItem(context, "CLIP", "CLIP"):
+                create_clip_configs(top_elems, builder) 
 
-        with gr.Tab(label="搜索"):
-            create_search_configs(top_elems, builder)
+            with TopTab.TabItem(context, "vectordb", "向量库"):
+                create_vector_db_configs(top_elems, builder)
 
-        with gr.Tab(label="安全"):
-            create_security_configs(top_elems, builder)
+            with TopTab.TabItem(context, "search", "搜索"):
+                create_search_configs(top_elems, builder)
+
+            with TopTab.TabItem(context, "security", "安全"):
+                create_security_configs(top_elems, builder)
 
     init_page(page, cancel_btn, builder)
 

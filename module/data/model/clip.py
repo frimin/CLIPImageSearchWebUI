@@ -70,8 +70,12 @@ class CLIPWarpper:
         assert self._model is None
         is_load = False
         try:
+            kwargs = {}
+            if self._webui_configs.get_cfg().clip.offline_load:
+                kwargs["local_files_only"]=True
+                kwargs["force_download"] = False
             for _ in tqdm([0], desc=f"加载 {self.clip_model_id}"):
-                self._processor, self._model = load_clip_model(self._cfg)
+                self._processor, self._model = load_clip_model(self._cfg, **kwargs)
                 #clip_model = CLIPModel.from_pretrained(model_id, torch_dtype=torch.float16)
                 self._model.requires_grad_(False)
                 self._model = self._model.eval()

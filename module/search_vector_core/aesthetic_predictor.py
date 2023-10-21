@@ -59,7 +59,7 @@ def on_bind(search_state: SearchVectorPageState, compolents: list[gr.components.
             raise gr.Error("不支持当前 CLIP 模型")
 
         if model is None:
-            model = MLP(clip_model.model.text_embed_dim) 
+            model = MLP(clip_model.get_dim()) 
             s = torch.load("models/improved-aesthetic-predictor/ava+logos-l14-linearMSE.pth")   # load the model you trained previously or the model available in this repo
             model.load_state_dict(s)
             model.to(clip_model.device)

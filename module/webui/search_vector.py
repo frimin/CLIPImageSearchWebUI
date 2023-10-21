@@ -16,9 +16,9 @@ from module.search_vector_core import (
     clustering, 
     aesthetic_predictor, 
     deduplication,
-    search_image_delete,
     search_image_load_vecdb,
 )
+from module.webui.components.search import create_image_delete
 from module.search_vector_core.search_state import SearchVectorPageState, open_and_try_resize_image
 import module.utils.path_util as path_util
 import subprocess
@@ -78,9 +78,8 @@ def on_search_with_image(search_target: dict,
     clip_model = get_clip_model()
 
     with clip_model.get_model() as m:
-        clip_inputs = clip_model.processor(images=image, return_tensors="pt", padding=True)
-    clip_inputs["pixel_values"] = clip_inputs["pixel_values"].to(clip_model.device)
-    with clip_model as m:
+        clip_inputs = m.processor(images=image, return_tensors="pt", padding=True)
+        clip_inputs["pixel_values"] = clip_inputs["pixel_values"].to(clip_model.device)
         image_features = m.model.get_image_features(**clip_inputs)
     embedding = image_features[0]
     embedding /= embedding.norm(dim=-1, keepdim=True) 
@@ -231,7 +230,7 @@ def page(block: gr.Blocks, args, top_elems):
                 with gr.Row():
                     save_to_outdir_copy_type = gr.Dropdown(label="保存模式", choices=["保存当前查询", "保存所有查询"], value="保存当前查询", type="index", interactive=True)
                     save_to_outdir_skip_img_filesize = gr.Number(label="跳过小于此文件大小", info="单位千字节(KB)", value=0, interactive=True)
-                    format_choices = ["不修改", "JPEG", "PNG",".webp"]
+                    format_choices = ["不修改", "JPEG", "PNG"]
                     save_to_outdir_format = gr.Dropdown(label="保存格式为", info="指定新的保存格式", choices=format_choices, value=format_choices[0], type="index", interactive=True)
                     save_to_outdir_quality = gr.Number(label="保存质量", info="仅保存为 JPEG 有效" , value=95, interactive=True)
                 with gr.Row():
@@ -249,7 +248,7 @@ def page(block: gr.Blocks, args, top_elems):
                     save_to_outdir = gr.Textbox(label="保存结果图片到目录", scale=5, value=default_save_path)
                     save_to_outdir_btn = gr.Button("保存")
 
-            search_image_delete_compolents = search_image_delete.on_gui()
+            create_image_delete(top_elems, local_state)
             search_image_load_vecdb_compolents = search_image_load_vecdb.on_gui()
 
     set_search_target([local_state.search_target, local_state.select_search_target])
@@ -411,5 +410,5 @@ def page(block: gr.Blocks, args, top_elems):
     clustering.on_bind(search_state=local_state, compolents=repeat_query_compolents)
     aesthetic_predictor.on_bind(search_state=local_state, compolents=aesthetic_predictor_compolents)
     deduplication.on_bind(search_state=local_state, compolents=deduplication_compolents)
-    search_image_delete.on_bind(search_state=local_state, compolents=search_image_delete_compolents)
+    #search_image_delete.on_bind(search_state=local_state, compolents=search_image_delete_compolents)
     search_image_load_vecdb.on_bind(search_state=local_state, compolents=search_image_load_vecdb_compolents)

@@ -9,6 +9,10 @@ class CLIPModelList():
         self._cfg = OmegaConf.load(self._config_filename)
         assert isinstance(self._cfg, ListConfig)
         self._cfg = hydra.utils.instantiate(self._cfg)
+        self._short_names = []
+
+        for i in self._cfg:
+            self._short_names.append(i.short_name)
 
     def get_cfg(self):
         return self._cfg
@@ -18,6 +22,9 @@ class CLIPModelList():
             if i.model_id == model_id:
                 return i
         raise ValueError(f"not find clip model id: {model_id}")
+
+    def get_short_names(self):
+        return self._short_names
 
 def init_clip_model_list():
     if not hasattr(CLIPModelList, "__data") or CLIPModelList.__data is None:

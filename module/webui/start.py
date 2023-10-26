@@ -12,6 +12,7 @@ from module.webui.components import (
     create_webui_configs,
     create_embedding_page,
     create_file_checker,
+    create_image_augmentation,
 )
 from module.data import init_data
 
@@ -36,6 +37,8 @@ def start_app(args):
                         create_video_screenshot(top_elems)
                     with TopTab.TabItem(context, "file_checker", "文件检查器"):
                         create_file_checker(top_elems)
+                    with TopTab.TabItem(context, "image_augmentation", "图像增广"):
+                        create_image_augmentation(top_elems)
 
             with TopTab.TabItem(context, "config", "设置"):
                 create_webui_configs(top_elems)

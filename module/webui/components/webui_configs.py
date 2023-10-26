@@ -7,7 +7,7 @@ from module.data import (
 )
 
 from .configs import (
-    create_clip_configs,
+    create_model_configs,
     create_vector_db_configs,
     create_search_configs,
     create_security_configs,
@@ -115,8 +115,8 @@ def create_webui_configs(top_elems: TopElements):
         gr.Markdown("[GITHUB 在线文档](https://github.com/frimin/CLIPImageSearchWebUI#%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E)")
 
         with TopTab.Tabs(context):
-            with TopTab.TabItem(context, "CLIP", "CLIP"):
-                create_clip_configs(top_elems, builder) 
+            with TopTab.TabItem(context, "model", "模型"):
+                create_model_configs(top_elems, builder) 
 
             with TopTab.TabItem(context, "vectordb", "向量库"):
                 create_vector_db_configs(top_elems, builder)

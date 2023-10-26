@@ -1,5 +1,7 @@
 import os
 import gradio as gr
+import random
+import math
 from tqdm import tqdm
 from module.foundation.webui import TopElements
 from module.data import get_cache_root, get_webui_configs
@@ -8,11 +10,19 @@ from PIL import Image
 from uuid import uuid4
 from pathlib import Path
 
-PIPELINE=["中止", "水平翻转", "垂直翻转", "随机裁剪 - 原始比例", "随机裁剪 - 1:1比例", "YOLO-TOP1-标签", "YOLO-随机标签"]
+PIPELINE=["中止", "水平翻转", "垂直翻转", "随机裁剪 - 原始比例", "随机裁剪 - 1:1比例"]
 
 class PipeAbortException(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
+
+def get_crop_box(width:int, height:int, crop_width:int, crop_height:int, horizontal_offset: int = 0.5, vertical_offset: int = 0.5):
+        left = (width - crop_width) * horizontal_offset
+        top = (height - crop_height) * vertical_offset
+        right = crop_width + (width - crop_width) * horizontal_offset
+        botton = crop_height + (height - crop_height) * vertical_offset
+
+        return (left, top, right, botton)
 
 def divide_chunks(l, n): 
     for i in range(0, len(l), n):  
@@ -84,6 +94,47 @@ class ImageAugmentationPipeline():
         out = input_image.transpose(Image.FLIP_TOP_BOTTOM)
         return out
 
+    def _act_3(self, input_image: Image):
+        """随机裁剪 - 原始比例"""
+        w, h = input_image.size
+        scale = 1
+        
+        if self.crop_scale_min >= self.crop_scale_max:
+            scale = self.crop_scale_min
+        else:
+            scale = random.randint(self.crop_scale_min, self.crop_scale_max)
+        new_w, new_h = math.floor(w * scale), math.floor(h * scale)
+
+        if new_w < self.crop_pixel_min or new_h < self.crop_pixel_min:
+            return None
+
+        crop_box = get_crop_box(w, h, new_w, new_h, random.uniform(0, 1), random.uniform(0, 1))
+
+        image = input_image.crop(crop_box)
+        out = image.resize((new_w, new_h))
+        return out
+
+    def _act_4(self, input_image: Image):
+        """随机裁剪 - 1:1比例"""
+        w, h = input_image.size
+        scale = 1
+        
+        if self.crop_scale_min >= self.crop_scale_max:
+            scale = self.crop_scale_min
+        else:
+            scale = random.randint(self.crop_scale_min, self.crop_scale_max)
+
+        new_edge = math.floor(min(w, h) * scale)
+
+        if new_edge < self.crop_pixel_min:
+            return None
+
+        crop_box = get_crop_box(w, h, new_edge, new_edge, random.uniform(0, 1), random.uniform(0, 1))
+
+        image = input_image.crop(crop_box)
+        out = image.resize((new_edge, new_edge))
+        return out
+
 def on_process_data_augmentation_pipeline(indir, outdir, crop_pixel_min, crop_scale_min, crop_scale_max, *args, progress = gr.Progress(track_tqdm=True)):
     if not indir or not os.path.exists(indir):
         raise ValueError(f"输入目录不存在: {indir}")
@@ -116,7 +167,7 @@ def create_image_augmentation(top_elems: TopElements):
     generate_btn = gr.Button("生成", variant="primary")
 
     with gr.Row():
-        crop_pixel_min = gr.Number(label="裁剪最小边", value=512, info="裁剪结果当最小边小于此值时，将丢弃输出", interactive=True)
+        crop_pixel_min = gr.Number(label="裁剪最小边", value=512, info="裁剪结果当最小边小于此值时，将丢弃输出", interactive=True, minimum=64)
         crop_scale_min = gr.Slider(label="裁剪起始比例", value=0.5, minimum=0.01, maximum=1.0, step=0.01, interactive=True)
         crop_scale_max = gr.Slider(label="裁剪结束比例", value=0.5, minimum=0.01, maximum=1.0, step=0.01, interactive=True)
 

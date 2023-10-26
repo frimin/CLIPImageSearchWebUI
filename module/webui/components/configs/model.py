@@ -29,7 +29,7 @@ def on_unload_clip_model():
     clip_model = get_clip_model()
     clip_model.release_model()
 
-def create_clip_configs(top_elems: TopElements, builder: ConfigUIBuilder):
+def create_model_configs(top_elems: TopElements, builder: ConfigUIBuilder):
     clip_model_id = gr.Dropdown(label="可选的 CLIP 模型", multiselect=False, interactive=True)
 
     def get_clip_model_id(cfg):

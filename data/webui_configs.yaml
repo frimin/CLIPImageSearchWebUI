@@ -1,7 +1,4 @@
 clip_model_id: "openai/clip-vit-large-patch14"
-clip_device: cpu
-clip:
-  offline_load: false
 librarys:
 - <example>data\example_library
 security:
@@ -22,3 +19,10 @@ search:
   max_page_size: 50
 vector_db:
   load_start_count: 0
+model:
+  offline_load: false
+  yolos:
+    id: hustvl/yolos-tiny
+    device: cuda
+  clip:
+    device: cpu

@@ -51,8 +51,8 @@ class CLIPWarpper:
     def set_clip_model_id(self, clip_model_id):
         self.release_model()
         self.clip_model_id = clip_model_id
-        self._cfg = self._clip_model_list.get_model_cfg_by_model_id(clip_model_id)
-        self.device = torch.device(self._webui_configs.get_cfg().clip_device)
+        self._cfg = self._clip_model_list.get_model(clip_model_id)
+        self.device = torch.device(self._webui_configs.get_cfg().model.clip.device)
 
     def get_project_url(self) -> str:
         return self._cfg.project_url
@@ -71,7 +71,7 @@ class CLIPWarpper:
         is_load = False
         try:
             kwargs = {}
-            if self._webui_configs.get_cfg().clip.offline_load:
+            if self._webui_configs.get_cfg().model.offline_load:
                 kwargs["local_files_only"]=True
                 kwargs["force_download"] = False
             for _ in tqdm([0], desc=f"加载 {self.clip_model_id}"):

@@ -185,14 +185,14 @@ def create_embedding_page(top_elems: TopElements):
     with gr.Row():
         build_meta_batch_size = gr.Number(label="批大小", info="batch_size", value=4)
         build_meta_num_workers = gr.Number(label="工作进程数", info="num_workers", value=8)
-        start_create_meta_btn = gr.Button(value="生成向量文件")
+        start_create_meta_btn = gr.Button(value="生成向量文件", variant="primary")
 
-    gr.Markdown("(第二步) 生成向量库磁盘文件，如果不生成则会在每次加载时遍历所有向量文件在内存中构建。")
+    gr.Markdown("(第二步) 生成向量库磁盘文件，如果不生成则会在每次加载时遍历所有向量文件并在内存中构建。")
     build_db_indir = gr.TextArea(label="生成此目录列表下所有向量文件的向量库，并存储到各目录中")
     with gr.Row():
         build_db_batch_size = gr.Number(label="batch_size", info="批大小", value=5000)
         rebuild_checkbox = gr.Checkbox(label="强制重建", info="已存在向量库缓存时，删除旧的", value=False)
-        start_create_vector_index_btn = gr.Button(value="构建目录向量索引库")
+        start_create_vector_index_btn = gr.Button(value="构建目录向量索引库", variant="primary")
 
     start_create_meta_btn.click(fn=on_create_embeddings, inputs=[build_meta_indir, build_meta_batch_size, build_meta_num_workers], outputs=[top_elems.msg_text])
     start_create_vector_index_btn.click(fn=on_build_vector_db, inputs=[build_db_indir, build_db_batch_size, rebuild_checkbox], outputs=[top_elems.msg_text])

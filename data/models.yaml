@@ -1,0 +1,42 @@
+clip:
+  - model_id: openai/clip-vit-large-patch14
+    project_url: https://huggingface.co/openai/clip-vit-large-patch14
+    dim: 768
+    short_name: "openai-large"
+    clip_model:
+      _target_: transformers.CLIPModel.from_pretrained
+      _partial_: True
+    clip_processor:
+      _target_: transformers.CLIPProcessor.from_pretrained
+      _partial_: True
+
+  - model_id: laion/CLIP-ViT-bigG-14-laion2B-39B-b160k 
+    project_url: https://huggingface.co/laion/CLIP-ViT-bigG-14-laion2B-39B-b160k
+    dim: 1280
+    short_name: "laion-bigG"
+    clip_model:
+      _target_: transformers.CLIPModel.from_pretrained
+      _partial_: True
+    clip_processor:
+      _target_: transformers.CLIPProcessor.from_pretrained
+      _partial_: True
+
+  - model_id: OFA-Sys/chinese-clip-vit-large-patch14
+    project_url: https://huggingface.co/OFA-Sys/chinese-clip-vit-large-patch14
+    dim: 768
+    short_name: "OFA-Sys-zh-large"
+    clip_model:
+      _target_: transformers.ChineseCLIPModel.from_pretrained
+      _partial_: True
+    clip_processor:
+      _target_: transformers.ChineseCLIPProcessor.from_pretrained
+      _partial_: True
+yolos:
+  - model_id: hustvl/yolos-tiny
+    project_url: https://huggingface.co/hustvl/yolos-tiny
+    yolos_model:
+      _target_: transformers.YolosForObjectDetection.from_pretrained
+      _partial_: True
+    yolos_processor:
+      _target_: transformers.YolosImageProcessor.from_pretrained
+      _partial_: True

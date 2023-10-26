@@ -3,7 +3,7 @@ import os
 import gradio as gr
 import module.utils.constants_util as constants_util
 import module.utils.path_util as path_util
-from module.data.clip_model_list import get_clip_model_list
+from module.data import get_clip_model_list
 import json
 import shutil
 from tqdm import tqdm

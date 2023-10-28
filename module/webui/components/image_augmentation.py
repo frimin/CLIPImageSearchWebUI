@@ -6,6 +6,7 @@ import torch
 from tqdm import tqdm
 from module.foundation.webui import TopElements
 from module.data import get_cache_root, get_webui_configs, get_yolos_model, get_yolo_model_list
+from omegaconf import OmegaConf, ListConfig, DictConfig
 from module.core.src_datasets import SrcDataset
 from PIL import Image
 from uuid import uuid4
@@ -14,6 +15,7 @@ from ultralytics import YOLO
 from huggingface_hub import hf_hub_download
 
 MAX_STEP = 10
+STEP_ITEMS = 5
 
 class PipeAbortException(Exception):
     def __init__(self, *args: object) -> None:
@@ -33,30 +35,49 @@ def divide_chunks(l, n):
 
 class ImageAugmentationActions():
     _actions = []
+    _actions_dict = {}
     
     @classmethod
-    def add_action(cls, func, desc):
-        cls._actions.append((func, desc))
+    def add_action(cls, func, str_id, desc):
+        t = {
+            "func": func,
+            "desc": desc,
+            "id": str_id,
+        }
+        cls._actions.append(t)
+        cls._actions_dict[str_id] = t
 
-def augmentation_action(desc: str):
+def augmentation_action(id: str, desc: str):
     def decorator(func):
-        ImageAugmentationActions.add_action(func, desc)
+        ImageAugmentationActions.add_action(func, id, desc)
         return func
     return decorator
 
 class ImageAugmentationPipeline():
-    def __init__(self, indir, outdir, crop_pixel_min, crop_scale_min, crop_scale_max, outdir_with_step) -> None:
+    def __init__(self, pipe_cfg, indir, outdir, outdir_with_step) -> None:
         self.indir = indir
         self.outdir = outdir
-        self.crop_pixel_min = crop_pixel_min
-        self.crop_scale_min = crop_scale_min
-        self.crop_scale_max = crop_scale_max
+        self.pipe_cfg = pipe_cfg
+        
+        self.crop_pixel_min = int(pipe_cfg.global_opt.crop_pixel_min)
+        self.crop_scale_min = pipe_cfg.global_opt.crop_scale_min
+        self.crop_scale_max = pipe_cfg.global_opt.crop_scale_max
         self.outdir_with_step = outdir_with_step
         self.outputs_image = []
         self.models = {}
         self.step_dir = {}
 
-    def process_image(self, image_filename, steps_args):
+        self.action_info = []
+        self.init_action()
+
+    def init_action(self):
+        for act in self.pipe_cfg.actions:
+            self.action_info.append({
+                "cfg": act,
+                "attributes": set(act.attributes.split(" "))
+            })
+
+    def process_image(self, image_filename):
         image_filename = os.path.abspath(image_filename)
 
         self.output_prefix = os.path.join(self.outdir, str(uuid4()))
@@ -69,10 +90,9 @@ class ImageAugmentationPipeline():
 
         self.outputs_image.append(Image.open(image_filename))
         i = 0
-
         try:
-            for arg in divide_chunks(steps_args, 5):
-                self.process_step(i, *arg)
+            for act_info in self.action_info:
+                self.process_step(i, act_info) 
                 i += 1
         except PipeAbortException:
             pass
@@ -81,28 +101,31 @@ class ImageAugmentationPipeline():
                 v.close()
             self.outputs_image = []
 
-    def process_step(self, index, pipe_action, get_input, send_output, save_file, force_continue):
+    def process_step(self, index, act_info):
+        act_cfg, attributes = act_info["cfg"], act_info["attributes"]
+
         try:
-            func, _ = ImageAugmentationActions._actions[pipe_action]
+            t = ImageAugmentationActions._actions_dict[act_cfg.id]
+            func = t["func"]
         except AttributeError as e:
             raise gr.Error(f"无效的生成操作")
 
-        if get_input:
+        if "input" in attributes:
             input_image = self.outputs_image[-1]
         else:
             input_image = self.outputs_image[0]
         
         output_image: Image = func(self, input_image)
 
-        if not force_continue and output_image is None:
+        if ("continue" not in attributes) and (output_image is None):
             raise PipeAbortException() 
         
-        if save_file and output_image:
+        if "save" in attributes and output_image:
             if self.outdir_with_step:
                 output_image.save(os.path.join(self.step_dir[index + 1], f"{uuid4()}_step_{index + 1}.png"), "PNG")
             else:
                 output_image.save(os.path.join(self.outdir, f"{uuid4()}_step_{index + 1}.png"), "PNG")
-            if send_output:
+            if "output" in attributes:
                 if len(self.outputs_image) > 1: 
                     self.outputs_image[-1].close()
                     self.outputs_image[-1] = output_image
@@ -112,23 +135,23 @@ class ImageAugmentationPipeline():
                 output_image.close()
                 del output_image
 
-    @augmentation_action(desc="中止")
+    @augmentation_action(id="abort", desc="中止")
     def _act_0(self, input_image: Image):
         raise PipeAbortException()
 
-    @augmentation_action(desc="水平翻转")
+    @augmentation_action(id="flip_left_right", desc="水平翻转")
     def _act_1(self, input_image: Image):
         """水平翻转"""
         out = input_image.transpose(Image.FLIP_LEFT_RIGHT)
         return out
 
-    @augmentation_action(desc="垂直翻转")
+    @augmentation_action(id="flip_top_bottom", desc="垂直翻转")
     def _act_2(self, input_image: Image):
         """垂直翻转"""
         out = input_image.transpose(Image.FLIP_TOP_BOTTOM)
         return out
 
-    @augmentation_action(desc="随机裁剪 - 原始比例")
+    @augmentation_action(id="random_crop", desc="随机裁剪 - 原始比例")
     def _act_3(self, input_image: Image):
         """随机裁剪 - 原始比例"""
         w, h = input_image.size
@@ -149,7 +172,7 @@ class ImageAugmentationPipeline():
         out = image.resize((new_w, new_h))
         return out
 
-    @augmentation_action(desc="随机裁剪 - 1:1比例")
+    @augmentation_action(id="random_crop - 1:1", desc="随机裁剪 - 1:1比例")
     def _act_4(self, input_image: Image):
         """随机裁剪 - 1:1比例"""
         w, h = input_image.size
@@ -171,7 +194,7 @@ class ImageAugmentationPipeline():
         out = image.resize((new_edge, new_edge))
         return out
 
-    @augmentation_action(desc="YOLOS - 主体标签")
+    @augmentation_action(id="YOLOS", desc="YOLOS - 主体标签")
     def _act_5(self, input_image: Image):
         """YOLOS - 主体标签"""
         yolos_model = get_yolos_model()
@@ -263,24 +286,64 @@ def create_yolo_action(model_id):
         return image
     return on_yolo
 
-def on_process_data_augmentation_pipeline(indir, outdir, crop_pixel_min, crop_scale_min, crop_scale_max, outdir_with_step, *args, progress = gr.Progress(track_tqdm=True)):
+def on_to_yaml_config(crop_pixel_min, crop_scale_min, crop_scale_max, *args):
+    global_opt = DictConfig({
+        "crop_pixel_min": int(crop_pixel_min),
+        "crop_scale_min": crop_scale_min,
+        "crop_scale_max": crop_scale_max,
+    }) 
+
+    actions = []
+
+    for action_index, get_input, send_output, save_file, force_continue in divide_chunks(args, STEP_ITEMS):
+        attributes = []
+        if get_input:
+            attributes.append("input")
+        if send_output:
+            attributes.append("output")
+        if save_file:
+            attributes.append("save")
+        if force_continue:
+            attributes.append("continue")
+
+        action_info = ImageAugmentationActions._actions[action_index]
+
+        act = DictConfig({
+            "id": action_info["id"],
+            "extra_params": "",
+            "attributes": " ".join(attributes)
+        })
+
+        actions.append(act)
+
+    cfg = DictConfig({
+        "global_opt": global_opt,
+        "actions": ListConfig(actions)
+    })
+
+    text = OmegaConf.to_yaml(cfg)
+    return text
+
+def on_process_yaml_pipeline(indir, outdir, outdir_with_step, yaml_str, progress = gr.Progress(track_tqdm=True)):
     if not indir or not os.path.exists(indir):
-        raise ValueError(f"输入目录不存在: {indir}")
+        raise gr.Error(f"输入目录不存在: {indir}")
     if not outdir:
-        raise ValueError(f"无效的输出目录: {outdir}")
-    
+        raise gr.Error(f"无效的输出目录: {outdir}")
+
+    cfg = OmegaConf.create(yaml_str)
+
     ds = SrcDataset(indir)
 
     if len(ds) == 0:
-        raise ValueError(f"指定输入目录下无可用图片")
+        raise gr.Error(f"指定输入目录下无可用图片")
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    pipe = ImageAugmentationPipeline(indir, outdir, crop_pixel_min, crop_scale_min, crop_scale_max, outdir_with_step)
+    pipe = ImageAugmentationPipeline(cfg, indir, outdir, outdir_with_step)
 
     for image in tqdm(ds):
-        pipe.process_image(image, args)
+        pipe.process_image(image)
         
     del pipe
 
@@ -293,9 +356,10 @@ def create_image_augmentation(top_elems: TopElements):
 
     #for i in  [ for i in yolo_model_list.get_cfg()]
     for i in yolo_model_list.get_cfg():
-        ImageAugmentationActions.add_action(create_yolo_action(i.model_id), f"YOLO - {i.model_id}")
+        yolo_id =  f"YOLO - {i.model_id}"
+        ImageAugmentationActions.add_action(create_yolo_action(i.model_id), yolo_id, yolo_id)
 
-    drop_desc = [i[1] for i in ImageAugmentationActions._actions]
+    drop_desc = [i["desc"] for i in ImageAugmentationActions._actions]
 
     with gr.Row():
         indir = gr.Textbox(label="输入目录")
@@ -303,9 +367,8 @@ def create_image_augmentation(top_elems: TopElements):
         outdir = gr.Textbox(label="输出目录", value=default_save_path)
         outdir_with_step = gr.Checkbox(label="输出至子目录中", info="为每个步骤分别建立子级目录进行输出", value=True, interactive=True)
 
-
     with gr.Tabs() as tabs:
-        with gr.TabItem(label="普通模式"):
+        with gr.TabItem(label="普通模式", id=0):
             with gr.Row():
                 convert_to_yaml_cfg = gr.Button("转换到配置")
                 generate_btn = gr.Button("生成", variant="primary")
@@ -319,7 +382,7 @@ def create_image_augmentation(top_elems: TopElements):
 
             for i in range(1, MAX_STEP + 1):
                 with gr.Row():
-                    pipe_action = gr.Dropdown(label=f"步骤 {i}", choices=drop_desc, scale=3, type="index", value=0)
+                    pipe_action = gr.Dropdown(label=f"步骤 {i}", choices=drop_desc, scale=5, type="index", value=0)
                     get_input = gr.Checkbox(label="接收输入", value=True, interactive=True)
                     send_output = gr.Checkbox(label="发送输出", value=True, interactive=True)
                     save_file = gr.Checkbox(label="保存文件", value=True, interactive=True)
@@ -327,12 +390,16 @@ def create_image_augmentation(top_elems: TopElements):
 
                     components += [pipe_action, get_input, send_output, save_file, force_continue]
 
-        with gr.TabItem(label="配置模式"):
+        with gr.TabItem(label="配置模式", id=1):
             with gr.Row():
-                generate_btn = gr.Button("从配置生成", variant="primary")
-            gr.Code(label="Pipline YAML", language="yaml")
+                generate_from_yaml_btn = gr.Button("从配置生成", variant="primary")
+            pipline_yaml = gr.Code(label="Pipline YAML", language="yaml", interactive=True)
 
-    generate_btn.click(on_process_data_augmentation_pipeline, [indir, outdir, crop_pixel_min, crop_scale_min, crop_scale_max, outdir_with_step] + components, [top_elems.msg_text])
+    internal_pipline_yaml = gr.State()
+
+    convert_to_yaml_cfg.click(on_to_yaml_config, [crop_pixel_min, crop_scale_min, crop_scale_max] + components, [pipline_yaml]).then(lambda : gr.Tabs.update(selected=1), [], [tabs])
+    generate_btn.click(on_to_yaml_config, [crop_pixel_min, crop_scale_min, crop_scale_max] + components, [internal_pipline_yaml]).then(on_process_yaml_pipeline, [indir, outdir, outdir_with_step, internal_pipline_yaml], [top_elems.msg_text])
+    generate_from_yaml_btn.click(on_process_yaml_pipeline, [indir, outdir, outdir_with_step, pipline_yaml], [top_elems.msg_text])
 
     
 

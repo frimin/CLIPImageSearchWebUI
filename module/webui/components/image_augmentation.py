@@ -17,6 +17,9 @@ from huggingface_hub import hf_hub_download
 MAX_STEP = 10
 STEP_ITEMS = 5
 
+class PresetsList():
+    value = None
+
 class PipeAbortException(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
@@ -172,7 +175,7 @@ class ImageAugmentationPipeline():
         out = image.resize((new_w, new_h))
         return out
 
-    @augmentation_action(id="random_crop - 1:1", desc="随机裁剪 - 1:1比例")
+    @augmentation_action(id="random_crop - square", desc="随机裁剪 - 1:1比例")
     def _act_4(self, input_image: Image):
         """随机裁剪 - 1:1比例"""
         w, h = input_image.size
@@ -349,58 +352,78 @@ def on_process_yaml_pipeline(indir, outdir, outdir_with_step, yaml_str, progress
 
     return "完成"
 
-def create_image_augmentation(top_elems: TopElements):
-    PRESETS=["中止", "水平翻转", "垂直翻转", "随机裁剪 - 原始比例", "随机裁剪 - 1:1比例", "YOLOS - 最大像素盒"]
+def on_load():
+    presets_dir = "./data/presets/image_augmentation"
 
+    if PresetsList.value is None:
+        PresetsList.value = []
+        for file in os.listdir(presets_dir):
+            name, ext = os.path.splitext(file)
+            if ext != ".yaml":
+                continue
+            PresetsList.value.append((name, os.path.join(presets_dir, file)))
+
+    return gr.Dropdown.update(choices=[i[0] for i in PresetsList.value])
+
+def on_load_presets(index):
+    _, filename = PresetsList.value[index]
+
+    with open(filename, "r") as f:
+        return f.read()
+
+def create_image_augmentation(top_elems: TopElements):
     yolo_model_list = get_yolo_model_list()
 
-    #for i in  [ for i in yolo_model_list.get_cfg()]
-    for i in yolo_model_list.get_cfg():
-        yolo_id =  f"YOLO - {i.model_id}"
-        ImageAugmentationActions.add_action(create_yolo_action(i.model_id), yolo_id, yolo_id)
+    with gr.Blocks() as block:
+        #for i in  [ for i in yolo_model_list.get_cfg()]
+        for i in yolo_model_list.get_cfg():
+            yolo_id =  f"YOLO - {i.model_id}"
+            ImageAugmentationActions.add_action(create_yolo_action(i.model_id), yolo_id, yolo_id)
 
-    drop_desc = [i["desc"] for i in ImageAugmentationActions._actions]
+        drop_desc = [i["desc"] for i in ImageAugmentationActions._actions]
 
-    with gr.Row():
-        indir = gr.Textbox(label="输入目录")
-        default_save_path = os.path.join(Path.home(), "Pictures", "CLIPImageSearchWebUI", "Augmentation")
-        outdir = gr.Textbox(label="输出目录", value=default_save_path)
-        outdir_with_step = gr.Checkbox(label="输出至子目录中", info="为每个步骤分别建立子级目录进行输出", value=True, interactive=True)
+        with gr.Row():
+            indir = gr.Textbox(label="输入目录")
+            default_save_path = os.path.join(Path.home(), "Pictures", "CLIPImageSearchWebUI", "Augmentation")
+            outdir = gr.Textbox(label="输出目录", value=default_save_path)
+            outdir_with_step = gr.Checkbox(label="输出至子目录中", info="为每个步骤分别建立子级目录进行输出", value=True, interactive=True)
 
-    with gr.Tabs() as tabs:
-        with gr.TabItem(label="普通模式", id=0):
-            with gr.Row():
-                convert_to_yaml_cfg = gr.Button("转换到配置")
-                generate_btn = gr.Button("生成", variant="primary")
-
-            with gr.Row():
-                crop_pixel_min = gr.Number(label="裁剪最小边", value=512, info="裁剪结果当最小边小于此值时，将丢弃输出", interactive=True, minimum=64)
-                crop_scale_min = gr.Slider(label="裁剪起始比例", value=0.5, minimum=0.01, maximum=1.0, step=0.01, interactive=True)
-                crop_scale_max = gr.Slider(label="裁剪结束比例", value=0.5, minimum=0.01, maximum=1.0, step=0.01, interactive=True)
-
-            components = []
-
-            for i in range(1, MAX_STEP + 1):
+        with gr.Tabs() as tabs:
+            with gr.TabItem(label="普通模式", id=0):
                 with gr.Row():
-                    pipe_action = gr.Dropdown(label=f"步骤 {i}", choices=drop_desc, scale=5, type="index", value=0)
-                    get_input = gr.Checkbox(label="接收输入", value=True, interactive=True)
-                    send_output = gr.Checkbox(label="发送输出", value=True, interactive=True)
-                    save_file = gr.Checkbox(label="保存文件", value=True, interactive=True)
-                    force_continue = gr.Checkbox(label="强制继续", value=True, interactive=True)
+                    convert_to_yaml_cfg = gr.Button("转换到配置")
+                    generate_btn = gr.Button("生成", variant="primary")
 
-                    components += [pipe_action, get_input, send_output, save_file, force_continue]
+                with gr.Row():
+                    crop_pixel_min = gr.Number(label="裁剪最小边", value=512, info="裁剪结果当最小边小于此值时，将丢弃输出", interactive=True, minimum=64)
+                    crop_scale_min = gr.Slider(label="裁剪起始比例", value=0.5, minimum=0.01, maximum=1.0, step=0.01, interactive=True)
+                    crop_scale_max = gr.Slider(label="裁剪结束比例", value=0.5, minimum=0.01, maximum=1.0, step=0.01, interactive=True)
 
-        with gr.TabItem(label="配置模式", id=1):
-            with gr.Row():
-                generate_from_yaml_btn = gr.Button("从配置生成", variant="primary")
-            pipline_yaml = gr.Code(label="Pipline YAML", language="yaml", interactive=True)
+                components = []
 
-    internal_pipline_yaml = gr.State()
+                for i in range(1, MAX_STEP + 1):
+                    with gr.Row():
+                        pipe_action = gr.Dropdown(label=f"步骤 {i}", choices=drop_desc, scale=5, type="index", value=0)
+                        get_input = gr.Checkbox(label="接收输入", value=True, interactive=True)
+                        send_output = gr.Checkbox(label="发送输出", value=True, interactive=True)
+                        save_file = gr.Checkbox(label="保存文件", value=True, interactive=True)
+                        force_continue = gr.Checkbox(label="强制继续", value=True, interactive=True)
+
+                        components += [pipe_action, get_input, send_output, save_file, force_continue]
+
+            with gr.TabItem(label="配置模式", id=1):
+                with gr.Row():
+                    presets_dropdown = gr.Dropdown(label="预设", scale=3, interactive=True, type="index")
+                    load_presets = gr.Button("加载预设")
+                with gr.Row():
+                    generate_from_yaml_btn = gr.Button("从配置生成", variant="primary")
+                pipline_yaml = gr.Code(label="Pipline YAML", language="yaml", interactive=True)
+
+        internal_pipline_yaml = gr.State()
 
     convert_to_yaml_cfg.click(on_to_yaml_config, [crop_pixel_min, crop_scale_min, crop_scale_max] + components, [pipline_yaml]).then(lambda : gr.Tabs.update(selected=1), [], [tabs])
     generate_btn.click(on_to_yaml_config, [crop_pixel_min, crop_scale_min, crop_scale_max] + components, [internal_pipline_yaml]).then(on_process_yaml_pipeline, [indir, outdir, outdir_with_step, internal_pipline_yaml], [top_elems.msg_text])
     generate_from_yaml_btn.click(on_process_yaml_pipeline, [indir, outdir, outdir_with_step, pipline_yaml], [top_elems.msg_text])
 
-    
-
-    
+    block.load(on_load, [], [presets_dropdown])
+    load_presets.click(on_load_presets, [presets_dropdown], [pipline_yaml])

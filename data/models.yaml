@@ -40,3 +40,39 @@ yolos:
     yolos_processor:
       _target_: transformers.YolosImageProcessor.from_pretrained
       _partial_: True
+yolo:
+  - model_id: Bingsu/adetailer/face_yolov8n.pt
+    repo_id: Bingsu/adetailer
+    file: face_yolov8n.pt
+    load_model:
+      _target_: ultralytics.YOLO
+      _partial_: True
+  - model_id: Bingsu/adetailer/face_yolov8s.pt
+    repo_id: Bingsu/adetailer
+    file: face_yolov8s.pt
+    load_model:
+      _target_: ultralytics.YOLO
+      _partial_: True
+  - model_id: Bingsu/adetailer/hand_yolov8n.pt
+    repo_id: Bingsu/adetailer
+    file: hand_yolov8n.pt
+    load_model:
+      _target_: ultralytics.YOLO
+      _partial_: True
+  - model_id: Bingsu/adetailer/person_yolov8n-seg.pt
+    repo_id: Bingsu/adetailer
+    file: person_yolov8n-seg.pt
+    load_model:
+      _target_: ultralytics.YOLO
+      _partial_: True
+  - model_id: Bingsu/adetailer/person_yolov8s-seg.pt
+    repo_id: Bingsu/adetailer
+    file: person_yolov8s-seg.pt
+    load_model:
+      _target_: ultralytics.YOLO
+      _partial_: True
+
+
+
+
+

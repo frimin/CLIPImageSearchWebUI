@@ -1,4 +1,3 @@
-pymilvus
 langchain
 pyyaml
 pillow
@@ -11,3 +10,4 @@ scikit-learn
 pytorch_lightning
 OmegaConf
 hydra-core
+ultralytics==8.0.202

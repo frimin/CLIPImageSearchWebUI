@@ -30,6 +30,10 @@ class YOLOSModelList(ModelListBase):
     def __init__(self, cfg) -> None:
         super().__init__(cfg)
 
+class YOLOModelList(ModelListBase):
+    def __init__(self, cfg) -> None:
+        super().__init__(cfg)
+
 class ModelCenter():
     __data = None
     def __init__(self) -> None:
@@ -40,6 +44,7 @@ class ModelCenter():
 
         self.clip = CLIPModelList(self._cfg.clip)
         self.yolos = YOLOSModelList(self._cfg.yolos)
+        self.yolo = YOLOModelList(self._cfg.yolo)
 
 def init_model_list():
     if not hasattr(ModelCenter, "__data") or ModelCenter.__data is None:
@@ -50,3 +55,6 @@ def get_clip_model_list() -> CLIPModelList:
 
 def get_yolos_model_list() -> YOLOSModelList:
     return ModelCenter.__data.yolos
+
+def get_yolo_model_list() -> YOLOModelList:
+    return ModelCenter.__data.yolo

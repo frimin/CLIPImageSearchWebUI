@@ -25,6 +25,10 @@ def args_builder():
         '--userdata_dir', type=str, default="userdata"
     )
 
+    parser.add_argument(
+        '--chdir', type=str, default=None
+    )
+
     args = parser.parse_args()
 
     return args

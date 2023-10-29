@@ -1,3 +1,4 @@
+import os
 import gradio as gr
 import module.webui.search_vector as search_vector
 from module.webui.extensions.video_screenshot import create_video_screenshot
@@ -16,6 +17,9 @@ from module.webui.components import (
 from module.data import init_data
 
 def start_app(args):
+    if args.chdir is not None:
+        os.chdir(args.chdir)
+
     init_data(args)
     context = TopTabContext()
 

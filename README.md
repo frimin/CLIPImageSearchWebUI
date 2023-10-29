@@ -10,9 +10,9 @@
 
 ## Windows
 
-为方便 Windows 用户使用，提供了一键解压使用包。
+Windows 下提供了 PowerShell 脚本编写的快速安装脚本。
 
-解压完毕 zip 包后，后双击 run_embeded.bat 脚本即可运行。
+保存 [此脚本文件](https://raw.githubusercontent.com/frimin/CLIPImageSearchWebUI/main/scripts/create_embeded_env.ps1) 到空目录中执行即可进行快速环境部署。
 
 ## 手动安装
 

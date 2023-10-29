@@ -7,8 +7,7 @@ import os
 import gradio as gr
 from module.search_vector_core.search_state import SearchVectorPageState
 import module.utils.constants_util as constants_util
-import module.utils.path_util as path_util
-from module.data import get_vector_db_mgr, get_clip_model
+from module.data import get_vector_db_mgr, get_clip_model, get_cache_root
 from tqdm import tqdm
 import os
 import json
@@ -45,7 +44,7 @@ def on_bind(search_state: SearchVectorPageState, compolents: list[gr.components.
 
         search_id = page_state["search_id"]
 
-        cache_root = os.path.join(path_util.get_cache_dir(), "search_id", search_id)
+        cache_root = os.path.join(get_cache_root().cache_root, "search_id", search_id)
 
         if not os.path.isdir(cache_root):
             raise constants_util.INVALID_QUERT_RECORD_ERROR

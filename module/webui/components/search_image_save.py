@@ -2,8 +2,7 @@ from PIL import Image
 import os
 import gradio as gr
 import module.utils.constants_util as constants_util
-import module.utils.path_util as path_util
-from module.data import get_clip_model_list
+from module.data import get_clip_model_list, get_cache_root
 import json
 import shutil
 from tqdm import tqdm
@@ -127,7 +126,7 @@ def save_query_image_to_dir(
     copy_same_name_ext = [i.strip() for i in copy_same_name_ext.split(',') ]
 
     for save_search_name, save_search_id in tqdm(save_search, desc="保存查询"):
-        cache_root = os.path.join(path_util.get_cache_dir(), "search_id", save_search_id)
+        cache_root = os.path.join(get_cache_root().cache_root, "search_id", save_search_id)
 
         # 获取路径安全的名字
         valid_save_search_name = re.sub('[^\w_.)( -]', '', save_search_name)

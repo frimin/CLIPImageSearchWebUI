@@ -6,7 +6,15 @@
 
 # 安装部署
 
-建议使用 python 3.10.9，其它效果未知。目前仅在 Windows 下测试开发，WSL2 和 Linux 效果未知。
+## Windows
+
+为方便 Windows 用户使用，提供了一键解压使用包。
+
+解压完毕 zip 包后，后双击 run_embeded.bat 脚本即可运行。
+
+## 手动安装
+
+建议使用 python 3.10.9，其它版本效果未知。目前仅在 Windows 下测试开发，WSL2 和 Linux 效果未知。
 
     pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
     pip3 install -r requirements.txt

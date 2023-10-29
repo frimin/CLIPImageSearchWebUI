@@ -20,7 +20,6 @@ from module.search_vector_core import (
 )
 from module.webui.components.search import create_image_delete
 from module.search_vector_core.search_state import SearchVectorPageState, open_and_try_resize_image
-import module.utils.path_util as path_util
 import subprocess
 import uuid
 from tqdm import tqdm
@@ -33,6 +32,7 @@ from module.data import (
     get_clip_model, 
     get_vector_db_mgr, 
     get_webui_configs,
+    get_cache_root,
     CLIPWarpper
 )
 
@@ -363,7 +363,7 @@ def page(block: gr.Blocks, args, top_elems):
         filename_with_ext = item[0]
         filename_without_ext, _ = os.path.splitext(filename_with_ext)
 
-        cache_root = os.path.join(path_util.get_cache_dir(), "preview")
+        cache_root = os.path.join(get_cache_root().cache_root, "preview")
         hash_id = hashlib.sha1(filename_without_ext.encode('utf-8')).hexdigest()
         cache_file = os.path.join(cache_root, f"{hash_id}.jpg")
         image_file = open_and_try_resize_image(filename_with_ext, cache_file, local_state.cache_image_max_size, local_state.greater_than_size)

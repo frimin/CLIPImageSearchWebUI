@@ -1,7 +1,6 @@
 import os
 import hashlib
 import gradio as gr
-import module.utils.path_util as path_util
 import module.utils.constants_util as constants_util
 import json
 from PIL import Image
@@ -13,6 +12,7 @@ from tqdm import tqdm
 from module.data import (
     get_vector_db_mgr, 
     get_webui_configs,
+    get_cache_root,
     VectorDatabase, 
     VectorDatabaseManager
 )
@@ -101,7 +101,7 @@ class SearchVectorPageState():
         raw_images = []
         labels = []
 
-        cache_root = os.path.join(path_util.get_cache_dir(), "preview")
+        cache_root = os.path.join(get_cache_root().cache_root, "preview")
 
         if not os.path.exists(cache_root):
             os.mkdir(cache_root)
@@ -129,7 +129,7 @@ class SearchVectorPageState():
         return list(zip(preview_images, labels)), list(zip(raw_images, labels))
 
     def load_page(self, search_id: str, page_index: int) -> list[tuple[str, str]]:
-        cache_root = os.path.join(path_util.get_cache_dir(), "search_id", search_id)
+        cache_root = os.path.join(get_cache_root().cache_root, "search_id", search_id)
         pages_index_file = os.path.join(cache_root, "pages_index.json")
 
         if not os.path.exists(pages_index_file):
@@ -146,7 +146,7 @@ class SearchVectorPageState():
             return json.loads(content)
 
     def get_cache_root_path(self, search_id: str):
-        return os.path.join(path_util.get_cache_dir(), "search_id", search_id)
+        return os.path.join(get_cache_root().cache_root, "search_id", search_id)
 
     def load_page_meta(self, search_id: str):
         cache_root = self.get_cache_root_path(search_id)
@@ -160,7 +160,7 @@ class SearchVectorPageState():
                    indices = None,
                    db: VectorDatabase = None,
                    progress: gr.Progress = None) -> list[tuple[str, str]]:
-        cache_root = os.path.join(path_util.get_cache_dir(), "search_id", search_id)
+        cache_root = os.path.join(get_cache_root().cache_root, "search_id", search_id)
 
         if not os.path.exists(cache_root):
             os.makedirs(cache_root)

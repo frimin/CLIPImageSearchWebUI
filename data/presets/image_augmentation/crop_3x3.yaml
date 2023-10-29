@@ -1,0 +1,90 @@
+opt:
+  crop_pixel_min: 512
+  crop_scale_min: 0.5
+  crop_scale_max: 0.5
+  skip_pixel: 512
+actions:
+# top
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.33
+      crop_scale_max: 0.33
+    x: 0
+    y: 0
+    overlap: 0.2
+  attributes: input save
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.33
+      crop_scale_max: 0.33
+    x: 0.5
+    y: 0
+    overlap: 0.2
+  attributes: input save
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.33
+      crop_scale_max: 0.33
+    x: 1
+    y: 0
+    overlap: 0.2
+  attributes: input save
+# middle
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.33
+      crop_scale_max: 0.33
+    x: 0
+    y: 0.5
+    overlap: 0.2
+  attributes: input save
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.33
+      crop_scale_max: 0.33
+    x: 0.5
+    y: 0.5
+    overlap: 0.2
+  attributes: input save
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.33
+      crop_scale_max: 0.33
+    x: 1
+    y: 0.5
+    overlap: 0.2
+  attributes: input save
+# botton
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.33
+      crop_scale_max: 0.33
+    x: 0
+    y: 1
+    overlap: 0.2
+  attributes: input save
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.33
+      crop_scale_max: 0.33
+    x: 0.5
+    y: 1
+    overlap: 0.2
+  attributes: input save
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.33
+      crop_scale_max: 0.33
+    x: 1
+    y: 1
+    overlap: 0.2
+  attributes: input save

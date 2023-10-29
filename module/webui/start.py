@@ -1,6 +1,5 @@
 import gradio as gr
 import module.webui.search_vector as search_vector
-from module.utils import path_util
 from module.webui.extensions.video_screenshot import create_video_screenshot
 from module.foundation.webui import (
     TopElements,
@@ -18,7 +17,6 @@ from module.data import init_data
 
 def start_app(args):
     init_data(args)
-    path_util.clear_cache_dir()
     context = TopTabContext()
 
     with gr.Blocks(theme=gr.themes.Default(), title="CLIPImageSearchWebUI") as demo:

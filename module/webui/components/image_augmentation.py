@@ -24,13 +24,28 @@ class PipeAbortException(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
 
-def get_crop_box(width:int, height:int, crop_width:int, crop_height:int, horizontal_offset: int = 0.5, vertical_offset: int = 0.5):
-        left = (width - crop_width) * horizontal_offset
-        top = (height - crop_height) * vertical_offset
-        right = crop_width + (width - crop_width) * horizontal_offset
-        botton = crop_height + (height - crop_height) * vertical_offset
+def get_crop_box(width:int, height:int, crop_width:int, crop_height:int, horizontal_offset: float = 0.5, vertical_offset: float = 0.5, crop_overlap: float = 0):
+        horizontal_offset = min(1, max(horizontal_offset, 0))
+        vertical_offset = min(1, max(vertical_offset, 0))
+        crop_overlap = min(1, max(crop_overlap, 0))
 
-        return (left, top, right, botton)
+        overlap_width = crop_width * crop_overlap / 2.0
+        overlap_height = crop_height * crop_overlap / 2.0
+
+        left = (width - crop_width) * horizontal_offset - overlap_width
+        top = (height - crop_height) * vertical_offset - overlap_height
+        right = crop_width + (width - crop_width) * horizontal_offset + overlap_width
+        botton = crop_height + (height - crop_height) * vertical_offset + overlap_height
+
+        left = min(width, max(left, 0))
+        top = min(height, max(top, 0))
+        right = min(width, max(right, 0))
+        botton = min(height, max(botton, 0))
+
+        box = (int(left), int(top), int(right), int(botton))
+        size = (box[2] - box[0], box[3] - box[1])
+
+        return box, size 
 
 def divide_chunks(l, n): 
     for i in range(0, len(l), n):  
@@ -41,18 +56,19 @@ class ImageAugmentationActions():
     _actions_dict = {}
     
     @classmethod
-    def add_action(cls, func, str_id, desc):
+    def add_action(cls, func, str_id, desc, visible=True):
         t = {
             "func": func,
             "desc": desc,
             "id": str_id,
+            "visible": visible,
         }
         cls._actions.append(t)
         cls._actions_dict[str_id] = t
 
-def augmentation_action(id: str, desc: str):
+def augmentation_action(id: str, desc: str, visible=True):
     def decorator(func):
-        ImageAugmentationActions.add_action(func, id, desc)
+        ImageAugmentationActions.add_action(func, id, desc, visible)
         return func
     return decorator
 
@@ -61,37 +77,67 @@ class ImageAugmentationPipeline():
         self.indir = indir
         self.outdir = outdir
         self.pipe_cfg = pipe_cfg
-        
-        self.crop_pixel_min = int(pipe_cfg.global_opt.crop_pixel_min)
-        self.crop_scale_min = pipe_cfg.global_opt.crop_scale_min
-        self.crop_scale_max = pipe_cfg.global_opt.crop_scale_max
+
+        global_opt = DictConfig({
+            "crop_pixel_min": int(pipe_cfg.opt.crop_pixel_min),
+            "crop_scale_min": pipe_cfg.opt.crop_scale_min,
+            "crop_scale_max": pipe_cfg.opt.crop_scale_max,
+            "skip_pixel": int(pipe_cfg.opt.skip_pixel)
+        })
+
+        self.default_action_param = DictConfig({
+            "opt": global_opt
+        })
+
         self.outdir_with_step = outdir_with_step
         self.outputs_image = []
         self.models = {}
         self.step_dir = {}
 
         self.action_info = []
-        self.init_action()
+        self._init_action()
+        self._mkdirs()
 
-    def init_action(self):
+    def _init_action(self):
         for act in self.pipe_cfg.actions:
+            params = act.get("params")
+
+            if not params:
+                params = OmegaConf.create()
+
+            assert isinstance(params, DictConfig)
+
+            params = OmegaConf.merge(self.default_action_param, params)
+
             self.action_info.append({
                 "cfg": act,
-                "attributes": set(act.attributes.split(" "))
+                "attributes": set(act.attributes.split(" ")),
+                "params": params,
             })
 
-    def process_image(self, image_filename):
-        image_filename = os.path.abspath(image_filename)
-
-        self.output_prefix = os.path.join(self.outdir, str(uuid4()))
-
+    def _mkdirs(self):
         if self.outdir_with_step:
             for i in range(1, MAX_STEP + 1):
                 self.step_dir[i] = os.path.join(self.outdir, f"{i}")
                 if not os.path.isdir(self.step_dir[i]):
                     os.mkdir(self.step_dir[i])
 
-        self.outputs_image.append(Image.open(image_filename))
+    def _valid_size(self, w, h, act_params):
+        if w < act_params.opt.crop_pixel_min or h < act_params.opt.crop_pixel_min:
+            return False
+        return True
+
+    def process_image(self, image_filename):
+        image_filename = os.path.abspath(image_filename)
+
+        img = Image.open(image_filename)
+        size = img.size
+
+        if size[0] < self.default_action_param.opt.skip_pixel or size[1] < self.default_action_param.opt.skip_pixel:
+            del img
+            return
+
+        self.outputs_image.append(img)
         i = 0
         try:
             for act_info in self.action_info:
@@ -105,7 +151,7 @@ class ImageAugmentationPipeline():
             self.outputs_image = []
 
     def process_step(self, index, act_info):
-        act_cfg, attributes = act_info["cfg"], act_info["attributes"]
+        act_cfg, attributes, act_params = act_info["cfg"], act_info["attributes"], act_info["params"]
 
         try:
             t = ImageAugmentationActions._actions_dict[act_cfg.id]
@@ -118,7 +164,7 @@ class ImageAugmentationPipeline():
         else:
             input_image = self.outputs_image[0]
         
-        output_image: Image = func(self, input_image)
+        output_image: Image = func(self, input_image, act_params)
 
         if ("continue" not in attributes) and (output_image is None):
             raise PipeAbortException() 
@@ -139,66 +185,79 @@ class ImageAugmentationPipeline():
                 del output_image
 
     @augmentation_action(id="abort", desc="中止")
-    def _act_0(self, input_image: Image):
+    def act_abort(self, input_image: Image, act_params):
         raise PipeAbortException()
 
     @augmentation_action(id="flip_left_right", desc="水平翻转")
-    def _act_1(self, input_image: Image):
+    def act_flip_left_right(self, input_image: Image, act_params):
         """水平翻转"""
         out = input_image.transpose(Image.FLIP_LEFT_RIGHT)
         return out
 
     @augmentation_action(id="flip_top_bottom", desc="垂直翻转")
-    def _act_2(self, input_image: Image):
+    def act_flip_top_bottom(self, input_image: Image, act_params):
         """垂直翻转"""
         out = input_image.transpose(Image.FLIP_TOP_BOTTOM)
         return out
 
     @augmentation_action(id="random_crop", desc="随机裁剪 - 原始比例")
-    def _act_3(self, input_image: Image):
+    def act_random_crop(self, input_image: Image, act_params):
         """随机裁剪 - 原始比例"""
         w, h = input_image.size
         scale = 1
         
-        if self.crop_scale_min >= self.crop_scale_max:
-            scale = self.crop_scale_min
+        if act_params.opt.crop_scale_min >= act_params.opt.crop_scale_max:
+            scale = act_params.opt.crop_scale_min
         else:
-            scale = random.randint(self.crop_scale_min, self.crop_scale_max)
+            scale = random.randint(act_params.opt.crop_scale_min, act_params.opt.crop_scale_max)
         new_w, new_h = math.floor(w * scale), math.floor(h * scale)
 
-        if new_w < self.crop_pixel_min or new_h < self.crop_pixel_min:
+        if not self._valid_size(new_h, new_w, act_params):
             return None
 
-        crop_box = get_crop_box(w, h, new_w, new_h, random.uniform(0, 1), random.uniform(0, 1))
+        x_offset = act_params.get("x")
+        y_offset = act_params.get("y")
+
+        if x_offset is None:
+            x_offset = random.uniform(0, 1)
+        if y_offset is None:
+            y_offset = random.uniform(0, 1)
+
+        crop_box, new_size = get_crop_box(w, h, new_w, new_h, x_offset, y_offset, act_params.get("overlap", 0))
 
         image = input_image.crop(crop_box)
-        out = image.resize((new_w, new_h))
+        out = image.resize(new_size)
         return out
 
     @augmentation_action(id="random_crop - square", desc="随机裁剪 - 1:1比例")
-    def _act_4(self, input_image: Image):
+    def act_random_crop_square(self, input_image: Image, act_params):
         """随机裁剪 - 1:1比例"""
         w, h = input_image.size
         scale = 1
-        
-        if self.crop_scale_min >= self.crop_scale_max:
+
+        if act_params.opt.crop_scale_min >= act_params.opt.crop_scale_max:
             scale = self.crop_scale_min
         else:
-            scale = random.randint(self.crop_scale_min, self.crop_scale_max)
+            scale = random.randint(act_params.opt.crop_scale_min, act_params.opt.crop_scale_max)
 
         new_edge = math.floor(min(w, h) * scale)
 
-        if new_edge < self.crop_pixel_min:
-            return None
+        x_offset = act_params.get("x")
+        y_offset = act_params.get("y")
 
-        crop_box = get_crop_box(w, h, new_edge, new_edge, random.uniform(0, 1), random.uniform(0, 1))
+        if x_offset is None:
+            x_offset = random.uniform(0, 1)
+        if y_offset is None:
+            y_offset = random.uniform(0, 1)
+
+        crop_box, new_size = get_crop_box(w, h, new_edge, new_edge, x_offset, y_offset, act_params.get("overlap", 0))
 
         image = input_image.crop(crop_box)
-        out = image.resize((new_edge, new_edge))
+        out = image.resize(new_size)
         return out
 
     @augmentation_action(id="YOLOS", desc="YOLOS - 主体标签")
-    def _act_5(self, input_image: Image):
+    def act_yolos(self, input_image: Image, act_params):
         """YOLOS - 主体标签"""
         yolos_model = get_yolos_model()
         with yolos_model.get_model() as m:
@@ -218,7 +277,7 @@ class ImageAugmentationPipeline():
             box = [round(i, 2) for i in box.tolist()]
             size=(int(box[2]-box[0]), (int)(box[3]-box[1]))
 
-            if size[0] < self.crop_pixel_min or size[1] < self.crop_pixel_min:
+            if not self._valid_size(size[0], size[1]):
                 continue
 
             if max_pixel is None or max_pixel < (size[0] * size[1]):
@@ -257,7 +316,7 @@ def create_yolo_action(model_id):
         model = YOLO(path)
         obj.models[model_id] = model
         return model
-    def on_yolo(obj: ImageAugmentationPipeline, input_image: Image):
+    def on_yolo(obj: ImageAugmentationPipeline, input_image: Image, act_params):
         model = load_yolo_model(obj)
         confidence=0.65
         pred = model(input_image, conf=confidence, device=torch.device("cuda"))
@@ -272,7 +331,7 @@ def create_yolo_action(model_id):
 
         for box in bboxes:
             size=(int(box[2]-box[0]), (int)(box[3]-box[1]))
-            if size[0] < obj.crop_pixel_min or size[1] < obj.crop_pixel_min:
+            if not obj._valid_size(size[0], size[1], act_params):
                 continue
 
             if max_pixel is None or max_pixel < (size[0] * size[1]):
@@ -289,11 +348,12 @@ def create_yolo_action(model_id):
         return image
     return on_yolo
 
-def on_to_yaml_config(crop_pixel_min, crop_scale_min, crop_scale_max, *args):
+def on_to_yaml_config(crop_pixel_min, crop_scale_min, crop_scale_max, skip_process_pixel, *args):
     global_opt = DictConfig({
         "crop_pixel_min": int(crop_pixel_min),
         "crop_scale_min": crop_scale_min,
         "crop_scale_max": crop_scale_max,
+        "skip_pixel": int(skip_process_pixel),
     }) 
 
     actions = []
@@ -313,21 +373,20 @@ def on_to_yaml_config(crop_pixel_min, crop_scale_min, crop_scale_max, *args):
 
         act = DictConfig({
             "id": action_info["id"],
-            "extra_params": "",
             "attributes": " ".join(attributes)
         })
 
         actions.append(act)
 
     cfg = DictConfig({
-        "global_opt": global_opt,
+        "opt": global_opt,
         "actions": ListConfig(actions)
     })
 
     text = OmegaConf.to_yaml(cfg)
     return text
 
-def on_process_yaml_pipeline(indir, outdir, outdir_with_step, yaml_str, progress = gr.Progress(track_tqdm=True)):
+def on_process_yaml_pipeline(indir, outdir, outdir_with_step, yaml_str):
     if not indir or not os.path.exists(indir):
         raise gr.Error(f"输入目录不存在: {indir}")
     if not outdir:
@@ -380,13 +439,14 @@ def create_image_augmentation(top_elems: TopElements):
             yolo_id =  f"YOLO - {i.model_id}"
             ImageAugmentationActions.add_action(create_yolo_action(i.model_id), yolo_id, yolo_id)
 
-        drop_desc = [i["desc"] for i in ImageAugmentationActions._actions]
+        drop_desc = [i["desc"] for i in ImageAugmentationActions._actions if i["visible"]]
 
         with gr.Row():
             indir = gr.Textbox(label="输入目录")
             default_save_path = os.path.join(Path.home(), "Pictures", "CLIPImageSearchWebUI", "Augmentation")
             outdir = gr.Textbox(label="输出目录", value=default_save_path)
             outdir_with_step = gr.Checkbox(label="输出至子目录中", info="为每个步骤分别建立子级目录进行输出", value=True, interactive=True)
+
 
         with gr.Tabs() as tabs:
             with gr.TabItem(label="普通模式", id=0):
@@ -395,6 +455,7 @@ def create_image_augmentation(top_elems: TopElements):
                     generate_btn = gr.Button("生成", variant="primary")
 
                 with gr.Row():
+                    skip_process_pixel = gr.Number(label="跳过图片", info="长或宽低于此分辨率的图像忽略处理", value=512, interactive=True)
                     crop_pixel_min = gr.Number(label="裁剪最小边", value=512, info="裁剪结果当最小边小于此值时，将丢弃输出", interactive=True, minimum=64)
                     crop_scale_min = gr.Slider(label="裁剪起始比例", value=0.5, minimum=0.01, maximum=1.0, step=0.01, interactive=True)
                     crop_scale_max = gr.Slider(label="裁剪结束比例", value=0.5, minimum=0.01, maximum=1.0, step=0.01, interactive=True)
@@ -421,8 +482,12 @@ def create_image_augmentation(top_elems: TopElements):
 
         internal_pipline_yaml = gr.State()
 
-    convert_to_yaml_cfg.click(on_to_yaml_config, [crop_pixel_min, crop_scale_min, crop_scale_max] + components, [pipline_yaml]).then(lambda : gr.Tabs.update(selected=1), [], [tabs])
-    generate_btn.click(on_to_yaml_config, [crop_pixel_min, crop_scale_min, crop_scale_max] + components, [internal_pipline_yaml]).then(on_process_yaml_pipeline, [indir, outdir, outdir_with_step, internal_pipline_yaml], [top_elems.msg_text])
+    convert_to_yaml_cfg.click(on_to_yaml_config, [crop_pixel_min, crop_scale_min, crop_scale_max, skip_process_pixel] + components, [pipline_yaml]).then(lambda : gr.Tabs.update(selected=1), [], [tabs])
+    generate_btn.click(on_to_yaml_config, [crop_pixel_min, crop_scale_min, crop_scale_max] + components, [internal_pipline_yaml]).then(
+        on_process_yaml_pipeline, 
+        [indir, outdir, outdir_with_step, internal_pipline_yaml], 
+        [top_elems.msg_text]
+    )
     generate_from_yaml_btn.click(on_process_yaml_pipeline, [indir, outdir, outdir_with_step, pipline_yaml], [top_elems.msg_text])
 
     block.load(on_load, [], [presets_dropdown])

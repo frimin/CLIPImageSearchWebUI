@@ -1,23 +1,84 @@
-global_opt:
+opt:
   crop_pixel_min: 512
   crop_scale_min: 0.5
   crop_scale_max: 0.5
+  skip_pixel: 512
 actions:
+# persion crop
 - id: YOLO - Bingsu/adetailer/person_yolov8n-seg.pt
-  extra_params: ''
   attributes: output save
-- id: random_crop - square
-  extra_params: ''
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.5
+      crop_scale_max: 0.5
+    x: 0
+    y: 0
+    overlap: 0.3
   attributes: input save
-- id: random_crop - square
-  extra_params: ''
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.5
+      crop_scale_max: 0.5
+    x: 1
+    y: 0
+    overlap: 0.3
   attributes: input save
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.5
+      crop_scale_max: 0.5
+    x: 0
+    y: 1
+    overlap: 0.3
+  attributes: input save
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.5
+      crop_scale_max: 0.5
+    x: 1
+    y: 1
+    overlap: 0.3
+  attributes: input save
+# face crop
 - id: YOLO - Bingsu/adetailer/face_yolov8n.pt
-  extra_params: ''
   attributes: output save
-- id: random_crop - square
-  extra_params: ''
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.5
+      crop_scale_max: 0.5
+    x: 0
+    y: 0
+    overlap: 0.3
   attributes: input save
-- id: random_crop - square
-  extra_params: ''
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.5
+      crop_scale_max: 0.5
+    x: 1
+    y: 0
+    overlap: 0.3
+  attributes: input save
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.5
+      crop_scale_max: 0.5
+    x: 0
+    y: 1
+    overlap: 0.3
+  attributes: input save
+- id: random_crop
+  params:
+    opt:
+      crop_scale_min: 0.5
+      crop_scale_max: 0.5
+    x: 1
+    y: 1
+    overlap: 0.3
   attributes: input save

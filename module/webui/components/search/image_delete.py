@@ -5,7 +5,6 @@ from tqdm import tqdm
 from module.data import get_cache_root, get_webui_configs
 from module.foundation.webui import TopElements
 
-import module.utils.path_util as path_util
 import os
 import json
 
@@ -18,7 +17,7 @@ def make_callback(top_elems: TopElements, button, search_state):
 
         temp_file = get_cache_root().create_temporary_filename(".txt")
 
-        cache_root = os.path.join(path_util.get_cache_dir(), "search_id", page_state["search_id"])
+        cache_root = os.path.join(get_cache_root().cache_root, "search_id", page_state["search_id"])
 
         if not os.path.isdir(cache_root):
             raise constants_util.INVALID_QUERT_RECORD_ERROR

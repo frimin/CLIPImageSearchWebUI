@@ -45,17 +45,17 @@ def create_model_configs(top_elems: TopElements, builder: ConfigUIBuilder):
         all_model_id = [i.model_id for i in model_list.get_cfg()]
         return gr.Dropdown.update(choices=all_model_id, value=cfg.clip_model_id)
 
-    def get_yolos_model_id(cfg):
-        model_list = get_yolos_model_list()
-        all_model_id = [i.model_id for i in model_list.get_cfg()]
-        return gr.Dropdown.update(choices=all_model_id, value=cfg.model.yolos.id)
+    #def get_yolos_model_id(cfg):
+    #    model_list = get_yolos_model_list()
+    #    all_model_id = [i.model_id for i in model_list.get_cfg()]
+    #    return gr.Dropdown.update(choices=all_model_id, value=cfg.model.yolos.id)
 
     with gr.Row():
         builder.add_elems(gr.Dropdown(label="可选的 CLIP 模型", multiselect=False, interactive=True, scale=4), "clip_model_id", get_clip_model_id)
         builder.add_elems(gr.Dropdown(label="默认设备", multiselect=False, interactive=True), "model.clip.device", lambda cfg: gr.Dropdown.update(choices=AVAILABLE_DEVICES, value=cfg.model.clip.device))
-    with gr.Row():
-        builder.add_elems(gr.Dropdown(label="可选的 YOLOS 模型", multiselect=False, interactive=True, scale=4), "model.yolos.id", get_yolos_model_id)
-        builder.add_elems(gr.Dropdown(label="默认设备", multiselect=False, interactive=True), "model.yolos.device", lambda cfg: gr.Dropdown.update(choices=AVAILABLE_DEVICES, value=cfg.model.yolos.device))
+    #with gr.Row():
+    #    builder.add_elems(gr.Dropdown(label="可选的 YOLOS 模型", multiselect=False, interactive=True, scale=4), "model.yolos.id", get_yolos_model_id)
+    #    builder.add_elems(gr.Dropdown(label="默认设备", multiselect=False, interactive=True), "model.yolos.device", lambda cfg: gr.Dropdown.update(choices=AVAILABLE_DEVICES, value=cfg.model.yolos.device))
 
     with gr.Row():
         builder.add_elems(gr.Checkbox(label="强制离线直接从本地缓存加载 HuggingFace 模型", info="已经下载过的模型则不用每次在线检查", interactive=True), "model.offline_load")

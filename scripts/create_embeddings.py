@@ -6,7 +6,7 @@ import argparse
 from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
-from module.data import init_clip_model_list, get_clip_model_list, load_clip_model
+from module.data import init_model_list, get_clip_model_list, load_clip_model
 from module.core.src_datasets import SrcDataset
 import os
 
@@ -56,9 +56,9 @@ def args_builder():
     return args
 
 def create_clip_model(clip_model_id, create_model=True, **kwargs):
-    init_clip_model_list()
+    init_model_list()
     model_list = get_clip_model_list()
-    model_cfg = model_list.get_model_cfg_by_model_id(clip_model_id)
+    model_cfg = model_list.get_model(clip_model_id)
     processor, model = load_clip_model(model_cfg, create_model=create_model, **kwargs)
     return processor, model, model_cfg
 

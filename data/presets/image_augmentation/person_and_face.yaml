@@ -1,0 +1,10 @@
+opt:
+  crop_pixel_min: 512
+  crop_scale_min: 0.5
+  crop_scale_max: 0.5
+  skip_pixel: 512
+actions:
+- id: YOLO - Bingsu/adetailer/person_yolov8n-seg.pt
+  attributes: output save
+- id: YOLO - Bingsu/adetailer/face_yolov8n.pt
+  attributes: output save

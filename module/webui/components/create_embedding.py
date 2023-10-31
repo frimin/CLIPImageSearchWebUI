@@ -161,6 +161,8 @@ def on_build_vector_db(indirs, batch_size, is_rebuild, progress=gr.Progress(trac
 
     for dir in tqdm(create_dirs):
         build_vector_db(dir, batch_size, is_rebuild)
+    
+    return "完成"
 
 def on_copy_vec_db_dir_from_configs():
     lines = []

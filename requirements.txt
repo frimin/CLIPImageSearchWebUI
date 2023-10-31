@@ -1,13 +1,13 @@
-langchain
+langchain==0.0.265
+gradio==3.47.1
+faiss-cpu==1.7.4
+ultralytics==8.0.202
 pyyaml
 pillow
 transformers
 datasets
 tqdm
-gradio==3.47.1
-faiss-cpu
 scikit-learn
 pytorch_lightning
 OmegaConf
 hydra-core
-ultralytics==8.0.202

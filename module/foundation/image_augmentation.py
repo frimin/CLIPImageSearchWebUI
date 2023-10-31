@@ -270,6 +270,21 @@ class ImageAugmentationPipeline():
         image = input_image.crop(crop_box)
         out = image.resize(new_size)
         return out
+    @augmentation_action(id="resize", desc="缩放")
+    def act_resize(self, input_image: Image, act_params):
+        resize_to = act_params.opt.crop_pixel_min
+
+        w, h = input_image.size
+
+        if w > h:
+            scale = resize_to / h 
+        else:
+            scale = resize_to / w
+        
+        new_w, new_h = int(w * scale), int(h * scale)
+
+        out = input_image.resize((new_w, new_h)) 
+        return out
 
     """
     @augmentation_action(id="YOLOS", desc="YOLOS - 主体标签")

@@ -40,8 +40,7 @@ class WebUIConfigs():
         self._cfg = self._changes_cfg
         self._changes_cfg = None
 
-        with open(self._user_config_filename, "w") as f:
-            OmegaConf.save(self._cfg, f)
+        OmegaConf.save(self._cfg, self._user_config_filename)
 
         for cb in self._callbacks:
             cb(self)

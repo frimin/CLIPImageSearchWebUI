@@ -3,6 +3,7 @@ import gradio as gr
 import random
 import math
 import torch
+import shutil
 from tqdm import tqdm
 from omegaconf import OmegaConf, ListConfig, DictConfig
 from module.core.src_datasets import SrcDataset
@@ -156,7 +157,7 @@ class ImageAugmentationPipeline():
         i = 0
         try:
             for act_info in self.action_info:
-                self.process_step(i, act_info) 
+                self.process_step(i, act_info, image_filename) 
                 i += 1
         except PipeAbortException:
             pass
@@ -165,7 +166,7 @@ class ImageAugmentationPipeline():
                 v.close()
             self.outputs_image = []
 
-    def process_step(self, index, act_info):
+    def process_step(self, index, act_info, origin_filename):
         act_cfg, attributes, act_params = act_info["cfg"], act_info["attributes"], act_info["params"]
 
         try:
@@ -185,10 +186,19 @@ class ImageAugmentationPipeline():
             raise PipeAbortException() 
         
         if "save" in attributes and output_image:
+            new_filename = f"{uuid4()}_step_{index + 1}"
             if self.outdir_with_step:
-                output_image.save(os.path.join(self.step_dir[index + 1], f"{uuid4()}_step_{index + 1}.png"), "PNG")
+                out_root = self.step_dir[index + 1]
             else:
-                output_image.save(os.path.join(self.outdir, f"{uuid4()}_step_{index + 1}.png"), "PNG")
+                out_root = self.outdir
+
+            output_image.save(os.path.join(out_root, f"{new_filename}.png"), "PNG")
+
+            filename_without_ext, _ = os.path.splitext(origin_filename)
+
+            if os.path.exists(f"{filename_without_ext}.txt"):
+                shutil.copy(f"{filename_without_ext}.txt", os.path.join(out_root, f"{new_filename}.txt"))
+    
             if "output" in attributes:
                 if len(self.outputs_image) > 1: 
                     self.outputs_image[-1].close()

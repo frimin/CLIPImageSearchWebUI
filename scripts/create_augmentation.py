@@ -31,7 +31,7 @@ def args_builder():
     )
 
     parser.add_argument(
-        '--num_workers', type=int, help='Num workers for process image', default=8,
+        '--num_workers', type=int, help='Num workers for process image', default=2,
     )
 
     parser.add_argument(

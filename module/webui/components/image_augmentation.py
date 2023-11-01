@@ -85,7 +85,7 @@ def on_process_yaml_pipeline(indir, outdir, outdir_with_step, num_workers, yaml_
     if outdir_with_step:
         args.append("--outdir_with_step")
 
-    run_cmd = sys.executable + " " + " ".join([str(i) for i in args] )
+    run_cmd = f'"{sys.executable}"' + " " + " ".join([str(i) for i in args] )
 
     print(run_cmd)
 

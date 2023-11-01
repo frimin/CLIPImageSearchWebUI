@@ -42,7 +42,7 @@ def on_create_embeddings(indirs, batch_size, num_workers, progress=gr.Progress(t
         args.append('--indir')
         args.append(f'"{dir}"')
     
-    run_cmd = sys.executable + " " + " ".join([str(i) for i in args] )
+    run_cmd = f'"{sys.executable}"' + " " + " ".join([str(i) for i in args] )
     
     clip_model.release_model()
     
